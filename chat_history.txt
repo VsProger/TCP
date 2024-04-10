@@ -1,0 +1,7 @@
+Bauka: Hello
+Azat: hi
+Bauka: Hello
+Bauka: How Are You?
+Aza: Hi
+Aza: Fine
+Aza: You?
