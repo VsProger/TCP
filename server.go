@@ -14,6 +14,7 @@ const (
 	CONN_PORT           = ":3335"
 	CONN_TYPE           = "tcp"
 	MSG_HISTORY_REQUEST = "/history"
+	MSG_USER_COUNT      = "/users"
 	HISTORY_FILENAME    = "chat_history.txt"
 )
 
@@ -44,6 +45,7 @@ func main() {
 		go handleClient(conn)
 	}
 }
+
 func handleClient(conn net.Conn) {
 	defer conn.Close()
 
@@ -60,34 +62,19 @@ func handleClient(conn net.Conn) {
 
 		str = strings.TrimSpace(str)
 
-		if str == MSG_HISTORY_REQUEST {
+		switch str {
+		case MSG_HISTORY_REQUEST:
 			sendChatHistory(conn)
-			continue
+		case MSG_USER_COUNT:
+			sendUserCount(conn)
+		default:
+			log.Println("Received:", str)
+			saveToChatHistory(str)
+
+			time := time.Now().Format(time.ANSIC)
+			responseStr := fmt.Sprintf("[%v] %v", time, str)
+			broadcast <- responseStr
 		}
-
-		log.Println("Received:", str)
-
-		// Save the message to chat_history.txt
-		saveToChatHistory(str)
-
-		time := time.Now().Format(time.ANSIC)
-		responseStr := fmt.Sprintf("[%v] %v", time, str)
-		broadcast <- responseStr
-	}
-}
-
-func saveToChatHistory(message string) {
-	file, err := os.OpenFile(HISTORY_FILENAME, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
-	if err != nil {
-		log.Println("Error opening history file:", err)
-		return
-	}
-	defer file.Close()
-
-	_, err = fmt.Fprintf(file, "%s\n", message)
-	if err != nil {
-		log.Println("Error writing to history file:", err)
-		return
 	}
 }
 
@@ -122,5 +109,25 @@ func sendChatHistory(conn net.Conn) {
 	for scanner.Scan() {
 		line := scanner.Text()
 		conn.Write([]byte(line + "\n"))
+	}
+}
+
+func sendUserCount(conn net.Conn) {
+	count := len(clients)
+	conn.Write([]byte(fmt.Sprintf("Number of connected users: %d\n", count)))
+}
+
+func saveToChatHistory(message string) {
+	file, err := os.OpenFile(HISTORY_FILENAME, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
+	if err != nil {
+		log.Println("Error opening history file:", err)
+		return
+	}
+	defer file.Close()
+
+	_, err = fmt.Fprintf(file, "%s\n", message)
+	if err != nil {
+		log.Println("Error writing to history file:", err)
+		return
 	}
 }
